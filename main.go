@@ -151,6 +151,7 @@ func getCarBill(carBill *Bill) {
 	carBill.amountDue = 422.94
 	// Due date is always the 17th of the month. Factor in the current month to get the right due date. The due date should always be the following month, unless the date is after the 17th
 	carBill.dueDate = time.Date(time.Now().Year(), time.Now().Month(), 17, 0, 0, 0, 0, time.Local).AddDate(0, 1, 0).Unix()
+	carBill.retrieved = true
 }
 
 func getMortgageBill(mortgageBill *Bill) {
@@ -262,6 +263,8 @@ func getPhoneBill(wirelessBill *Bill, internetBill *Bill) {
 	internetBalanceDue := cd.GetText(browser, "div.jsx-3631953385:nth-child(3)")
 	// Sample: Due Apr 28, 2024
 	internetBill.dueDate = extractInternetBillDueDate(internetBalanceDue)
+	internetBill.retrieved = true
+	wirelessBill.retrieved = true
 }
 
 func getInsuranceBill(insuranceBill *Bill) {
@@ -307,6 +310,7 @@ func getInsuranceBill(insuranceBill *Bill) {
 	dueDate := cd.GetText(browser, ".bill-due-date")
 	// Sample: May 17
 	insuranceBill.dueDate = extractInsuranceBillDueDate(dueDate)
+	insuranceBill.retrieved = true
 }
 
 func getGasBill(gasBill *Bill) {
@@ -338,6 +342,7 @@ func getGasBill(gasBill *Bill) {
 	balanceDue = cd.GetText(browser, ".due-date")
 	// Sample: May 08, 2024
 	gasBill.dueDate = extractGasBillDueDate(balanceDue)
+	gasBill.retrieved = true
 }
 
 func getSewerBill(sewerBill *Bill) {
@@ -367,6 +372,7 @@ func getSewerBill(sewerBill *Bill) {
 	balanceDue = cd.GetText(browser, "#body_content_AccountSummaryTabControl_BillingSummaryControl1_lblAppOrLatePaymentDateText")
 	// Sample: May 6, 2024
 	sewerBill.dueDate = extractSewerBillDueDate(balanceDue)
+	sewerBill.retrieved = true
 }
 
 func getPowerBill(powerBill *Bill) {
@@ -398,6 +404,7 @@ func getPowerBill(powerBill *Bill) {
 
 	powerBill.amountDue = stringToFloat(amountDue)
 	powerBill.dueDate = extractPowerBillDueDate(dueDate)
+	powerBill.retrieved = true
 }
 
 func getWaterBill(waterBill *Bill) {
@@ -443,6 +450,7 @@ func getWaterBill(waterBill *Bill) {
 	dueDate = strings.Split(dueDate, ".")[0]
 	// Sample: 04/23/2024
 	waterBill.dueDate = extractWaterBillDueDate(dueDate)
+	waterBill.retrieved = true
 }
 
 // Helper function to convert a string to a float like we are doing in the rest of the code with regex
