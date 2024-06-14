@@ -70,12 +70,12 @@ func main() {
 		bill *Bill
 	}{
 		{"Car", &Bill{}},
+		{"Water", &Bill{}},
 		{"Power", &Bill{}},
 		{"Gas", &Bill{}},
 		{"Sewer", &Bill{}},
-		{"Water", &Bill{}},
-		{"Wireless", &Bill{}},
 		{"Internet", &Bill{}},
+		{"Wireless", &Bill{}},
 		{"Mortgage", &Bill{}},
 		{"Insurance", &Bill{}},
 	}
@@ -92,8 +92,8 @@ func main() {
 		case "Gas":
 			getGasBill(entry.bill)
 		case "Wireless":
-			getPhoneBill(entry.bill, bills[6].bill)
-			writeBillToInfluxDB(writeAPI, "Internet", bills[6].bill)
+			getPhoneBill(entry.bill, bills[5].bill)
+			writeBillToInfluxDB(writeAPI, "Internet", bills[5].bill)
 		case "Internet":
 			continue // Handled with Wireless
 		case "Sewer":
@@ -104,7 +104,7 @@ func main() {
 			getMortgageBill(entry.bill)
 		}
 
-		fmt.Println("\033[H\033[2J")
+		//fmt.Println("\033[H\033[2J")
 		renderBillTable(bills)
 
 		if entry.bill.retrieved {
@@ -157,7 +157,10 @@ func getMortgageBill(mortgageBill *Bill) {
 	const timeout = 15000 // milliseconds
 
 	//* Navigate to login page
-	cd.Navigate(browser, "https://mypennymac.pennymacusa.com/account/login")
+	cd.Navigate(browser, "https://mypennymac.pennymac.com/account/login")
+
+	// Click .btn-secondary
+	cd.Click(browser, ".btn-secondary", false)
 
 	if !cd.ElementExists(browser, "#username", timeout) {
 		log.Printf("error: username input not found within %d ms", timeout)
@@ -200,28 +203,44 @@ func getMortgageBill(mortgageBill *Bill) {
 func getPhoneBill(wirelessBill *Bill, internetBill *Bill) {
 	//* Navigate to login page
 	cd.Navigate(browser, "https://www.att.com/acctmgmt/signin")
-	cd.WaitForElement(browser, "#userID")
+	if !cd.ElementExists(browser, "#userID", 10000) {
+		log.Printf("error: username input not found within 10s")
+		return
+	}
 
 	time.Sleep(2 * time.Second)
 
 	//* Enter username
-	cd.InputText(browser, "#userID", os.Getenv("ATT_USERNAME"), false, true)
+	cd.InputText(browser, "#userID", os.Getenv("ATT_USERNAME"), true, true)
+	time.Sleep(1 * time.Second)
+
 	cd.Click(browser, "#continueFromUserLogin", false)
-	cd.WaitForElement(browser, "#password")
+	if !cd.ElementExists(browser, "#password", 10000) {
+		log.Printf("error: password input not found within 10s")
+		return
+	}
 	time.Sleep(1 * time.Second)
 
 	//* Enter password
-	cd.InputText(browser, "#password", os.Getenv("ATT_PASSWORD"), false, true)
+	cd.InputText(browser, "#password", os.Getenv("ATT_PASSWORD"), true, true)
+
 	time.Sleep(1 * time.Second)
 
 	//* Click signin button
 	cd.Click(browser, "#signin", false)
-	cd.WaitForElement(browser, "#chooseMethodMakePaymentButton")
+
+	if !cd.ElementExists(browser, "#chooseMethodMakePaymentButton", 10000) {
+		log.Printf("error: make payment button not found within 10s")
+		return
+	}
 	time.Sleep(1 * time.Second)
 
 	//* Click make payment button
 	cd.Click(browser, "#chooseMethodMakePaymentButton", false)
-	cd.WaitForElement(browser, ".page-title")
+	if !cd.ElementExists(browser, ".page-title", 10000) {
+		log.Printf("error: page title not found within 10s")
+		return
+	}
 	time.Sleep(2 * time.Second)
 
 	//* Wireless balance
@@ -251,7 +270,10 @@ func getPhoneBill(wirelessBill *Bill, internetBill *Bill) {
 func getInsuranceBill(insuranceBill *Bill) {
 	//* Navigate to login page
 	cd.Navigate(browser, "https://proofing.statefarm.com/login-ui/login")
-	cd.WaitForElement(browser, "#username")
+	if !cd.ElementExists(browser, "#username", 10000) {
+		log.Printf("error: username input not found within 10s")
+		return
+	}
 
 	//* Enter credentials
 	cd.InputText(browser, "#username", os.Getenv("STATE_FARM_USERNAME"), false, false)
@@ -259,7 +281,10 @@ func getInsuranceBill(insuranceBill *Bill) {
 
 	//* Click login button
 	cd.Click(browser, "#submitButton", true)
-	cd.WaitForElement(browser, "#emailAddress > label:nth-child(2)")
+	if !cd.ElementExists(browser, "#emailAddress > label:nth-child(2)", 10000) {
+		log.Printf("error: email verification not found within 10s")
+		return
+	}
 
 	//* Click email verification
 	cd.Click(browser, "#emailAddress > label:nth-child(2)", true)
@@ -268,10 +293,13 @@ func getInsuranceBill(insuranceBill *Bill) {
 	time.Sleep(10 * time.Second)
 
 	//* Enter code
-	code := cd.GetCodeFromImap("hmail.digi-safe.co", os.Getenv("EMAIL_USERNAME"), os.Getenv("EMAIL_PASSWORD"), "Verification Code", `<span style=3D"color:#E22925;">`, "</", false)
+	code := cd.GetCodeFromImap("hmail.digi-safe.co", os.Getenv("IMAP_USERNAME"), os.Getenv("IMAP_PASSWORD"), "Verification Code", `<span style=3D"color:#E22925;">`, "</", false)
 	cd.InputText(browser, "#verification_code", code, false, false)
 	cd.Click(browser, "#submitButton", true)
-	cd.WaitForElement(browser, ".bill-due-amt-txt")
+	if !cd.ElementExists(browser, ".bill-due-amt-txt", 10000) {
+		log.Printf("error: balance due not found within 10s")
+		return
+	}
 
 	//* Balance due
 	balanceDue := cd.GetText(browser, ".bill-due-amt-txt")
@@ -286,17 +314,21 @@ func getInsuranceBill(insuranceBill *Bill) {
 func getGasBill(gasBill *Bill) {
 	//* Navigate to login page
 	cd.Navigate(browser, "https://myaccount.spireenergy.com/web/customer/registration/#/sign-in")
-	cd.WaitForElement(browser, "#loginEmail")
+	if !cd.ElementExists(browser, "#loginEmail", 10000) {
+		log.Printf("error: username input not found within 10s")
+		return
+	}
 
 	//* Enter credentials
 	cd.InputText(browser, "#loginEmail", os.Getenv("SPIRE_USERNAME"), false, false)
 	cd.InputText(browser, "#loginPassword", os.Getenv("SPIRE_PASSWORD"), false, false)
 
-	time.Sleep(1 * time.Second)
-
 	//* Click login button
 	cd.Click(browser, "section.buttons:nth-child(4) > button:nth-child(1)", false)
-	cd.WaitForElement(browser, ".amount-due")
+	if !cd.ElementExists(browser, ".amount-due", 10000) {
+		log.Printf("error: balance due not found within 10s")
+		return
+	}
 
 	time.Sleep(1 * time.Second)
 
@@ -313,15 +345,21 @@ func getGasBill(gasBill *Bill) {
 func getSewerBill(sewerBill *Bill) {
 	//* Navigate to login page
 	cd.Navigate(browser, "https://myaccount.stlmsd.com/MSDSSP/Index.aspx")
-	cd.WaitForElement(browser, "#body_content_txtUsername")
+	if !cd.ElementExists(browser, "#body_content_txtUsername", 10000) {
+		log.Printf("error: username input not found within 10s")
+		return
+	}
 
 	//* Enter credentials
-	cd.InputText(browser, "#body_content_txtUsername", os.Getenv("STLMSD_USERNAME"), false, false)
-	cd.InputText(browser, "#body_content_txtPassword", os.Getenv("STLMSD_PASSWORD"), false, false)
+	cd.InputText(browser, "#body_content_txtUsername", os.Getenv("STLMSD_USERNAME"), true, false)
+	cd.InputText(browser, "#body_content_txtPassword", os.Getenv("STLMSD_PASSWORD"), true, false)
 
 	//* Click login button
 	cd.Click(browser, "#body_content_btnLogin", false)
-	cd.WaitForElement(browser, "#body_content_AccountSummaryTabControl_BillingSummaryControl1_lblCurrentBalanceText")
+	if !cd.ElementExists(browser, "#body_content_AccountSummaryTabControl_BillingSummaryControl1_lblCurrentBalanceText", 10000) {
+		log.Printf("error: balance due not found within 10s")
+		return
+	}
 
 	//* Balance due
 	balanceDue := cd.GetText(browser, "#body_content_AccountSummaryTabControl_BillingSummaryControl1_lblCurrentBalanceText")
@@ -336,7 +374,10 @@ func getSewerBill(sewerBill *Bill) {
 func getPowerBill(powerBill *Bill) {
 	//* Navigate to the login page
 	cd.Navigate(browser, "https://www.ameren.com/login-page/")
-	cd.WaitForElement(browser, "#txtSignInEmail")
+	if !cd.ElementExists(browser, "#txtSignInEmail", 10000) {
+		log.Printf("error: email input not found within 10s")
+		return
+	}
 
 	//* Enter credentials
 	cd.InputText(browser, "#txtSignInEmail", os.Getenv("AMEREN_USERNAME"), false, false)
@@ -344,7 +385,10 @@ func getPowerBill(powerBill *Bill) {
 
 	//* Click the login button
 	cd.Click(browser, "#btnLogin", false)
-	cd.WaitForElement(browser, ".amount")
+	if !cd.ElementExists(browser, ".amount", 10000) {
+		log.Printf("error: balance due not found within 10s")
+		return
+	}
 
 	time.Sleep(2 * time.Second)
 
@@ -361,23 +405,35 @@ func getPowerBill(powerBill *Bill) {
 func getWaterBill(waterBill *Bill) {
 	//* Navigate to login page
 	cd.Navigate(browser, "https://stlo-egov.aspgov.com/Click2GovCX/index.html")
-	cd.WaitForElement(browser, "#menu > div > ul > li.lastTopRowMenuItem > a")
+	if !cd.ElementExists(browser, ".lastTopRowMenuItem > a:nth-child(1)", 10000) {
+		log.Printf("error: login button not found within 10s")
+		return
+	}
 
 	//* Click login button
-	cd.Click(browser, "#menu > div > ul > li.lastTopRowMenuItem > a", false)
-	cd.WaitForElement(browser, "div.labelRow:nth-child(3) > input:nth-child(2)")
+	cd.Click(browser, ".lastTopRowMenuItem > a:nth-child(1)", false)
+	if !cd.ElementExists(browser, "#email\\.emailId", 10000) {
+		log.Printf("error: username input not found within 10s")
+		return
+	}
 
 	//* Enter credentials
-	cd.InputText(browser, "div.labelRow:nth-child(3) > input:nth-child(2)", os.Getenv("STLO_EGOV_USERNAME"), false, false)
-	cd.InputText(browser, "#password", os.Getenv("STLO_EGOV_PASSWORD"), false, false)
+	cd.InputText(browser, "#email\\.emailId", os.Getenv("STLO_EGOV_USERNAME"), true, false)
+	cd.InputText(browser, "#password", os.Getenv("STLO_EGOV_PASSWORD"), true, false)
 
 	//* Click logon button
 	cd.Click(browser, "#submitButton", false)
-	cd.WaitForElement(browser, ".menuWrapper > ul:nth-child(1) > li:nth-child(6) > a:nth-child(1)")
+	if !cd.ElementExists(browser, ".menuWrapper > ul:nth-child(1) > li:nth-child(6) > a:nth-child(1)", 10000) {
+		log.Printf("error: account info button not found within 10s")
+		return
+	}
 
 	//* Click account info
 	cd.Click(browser, ".menuWrapper > ul:nth-child(1) > li:nth-child(6) > a:nth-child(1)", false)
-	cd.WaitForElement(browser, "div.labelRow:nth-child(5)")
+	if !cd.ElementExists(browser, "div.labelRow:nth-child(5)", 10000) {
+		log.Printf("error: balance due not found within 10s")
+		return
+	}
 
 	//* Get balance due
 	balanceDue := cd.GetText(browser, "div.labelRow:nth-child(5)")

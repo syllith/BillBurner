@@ -109,7 +109,7 @@ func CreateBrowser(headless, fresh, enableBypass bool) (context.Context, context
 //     true uses JavaScript evaluation to directly set the element's value.
 //     false uses chromedp.SendKeys to simulate typing into the input field.
 //
-//   - trip determines if input and change events should be dispatched after setting the value:
+//   - useTrip determines if input and change events should be dispatched after setting the value:
 //     true triggers both 'input' and 'change' events to simulate more natural user interaction.
 //     false sets the value without triggering these events.
 //
@@ -134,6 +134,7 @@ func InputText(ctx context.Context, selector string, input string, useEval bool,
 	if err := chromedp.Run(ctx, actions...); err != nil {
 		log.Printf("failed to input text: %v", err)
 	}
+
 }
 
 // GetAttribute retrieves an attribute from a DOM element specified by a CSS selector.
@@ -302,7 +303,7 @@ func ElementExists(ctx context.Context, selector string, timeout int64) bool {
 		if time.Since(st).Milliseconds() > timeout {
 			return false
 		}
-		time.Sleep(50 * time.Millisecond) // Pause briefly to avoid hammering the CPU
+		time.Sleep(250 * time.Millisecond) // Pause briefly to avoid hammering the CPU
 	}
 }
 
@@ -527,4 +528,32 @@ func GetCodeFromImap(emailServer, emailAddress, password, emailSubject, delimPar
 	code := strings.TrimSpace(part2[0])
 
 	return code
+}
+
+// SavePageSource retrieves the HTML source of the current page and saves it to a file named source.html in the current directory.
+//
+// - ctx is the Chromedp context which manages the underlying browser actions and states.
+//
+// This function logs any errors that occur during the source retrieval and file saving process.
+func SavePageSource(ctx context.Context) {
+	var res string
+	if err := chromedp.Run(ctx, chromedp.ActionFunc(func(ctx context.Context) error {
+		node, err := dom.GetDocument().Do(ctx)
+		if err != nil {
+			return err
+		}
+		res, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+		return err
+	})); err != nil {
+		log.Printf("error retrieving the page source: %v", err)
+		return
+	}
+
+	// Save the source to a file
+	filename := "source.html"
+	if err := os.WriteFile(filename, []byte(res), 0644); err != nil {
+		log.Printf("failed to save page source to %s: %v", filename, err)
+	} else {
+		log.Printf("page source saved to %s successfully", filename)
+	}
 }
