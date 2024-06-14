@@ -3,7 +3,7 @@ module billburner
 go 1.22.2
 
 require (
-	github.com/chromedp/cdproto v0.0.0-20240501202034-ef67d660e9fd
+	github.com/chromedp/cdproto v0.0.0-20240602235142-49d0e97b7881
 	github.com/chromedp/chromedp v0.9.5
 	github.com/emersion/go-imap v1.2.1
 	github.com/influxdata/influxdb-client-go/v2 v2.13.0

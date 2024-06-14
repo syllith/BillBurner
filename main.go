@@ -69,14 +69,14 @@ func main() {
 		name string
 		bill *Bill
 	}{
-		{"Car", &Bill{}},
+		{"Internet", &Bill{}},
+		{"Wireless", &Bill{}},
 		{"Water", &Bill{}},
 		{"Power", &Bill{}},
 		{"Gas", &Bill{}},
 		{"Sewer", &Bill{}},
-		{"Internet", &Bill{}},
-		{"Wireless", &Bill{}},
 		{"Mortgage", &Bill{}},
+		{"Car", &Bill{}},
 		{"Insurance", &Bill{}},
 	}
 
@@ -92,8 +92,8 @@ func main() {
 		case "Gas":
 			getGasBill(entry.bill)
 		case "Wireless":
-			getPhoneBill(entry.bill, bills[5].bill)
-			writeBillToInfluxDB(writeAPI, "Internet", bills[5].bill)
+			getPhoneBill(entry.bill, bills[0].bill)
+			writeBillToInfluxDB(writeAPI, "Internet", bills[0].bill)
 		case "Internet":
 			continue // Handled with Wireless
 		case "Sewer":
@@ -158,9 +158,6 @@ func getMortgageBill(mortgageBill *Bill) {
 
 	//* Navigate to login page
 	cd.Navigate(browser, "https://mypennymac.pennymac.com/account/login")
-
-	// Click .btn-secondary
-	cd.Click(browser, ".btn-secondary", false)
 
 	if !cd.ElementExists(browser, "#username", timeout) {
 		log.Printf("error: username input not found within %d ms", timeout)
@@ -248,7 +245,7 @@ func getPhoneBill(wirelessBill *Bill, internetBill *Bill) {
 	wirelessBill.amountDue = stringToFloat(wirelessBalance)
 
 	//* Wireless due date
-	wirelessBalanceDue := cd.GetText(browser, "div.pad-t-md-sm:nth-child(1) > div:nth-child(2)")
+	wirelessBalanceDue := cd.GetText(browser, "div.fastpay-auth-page .option_date-picker .heading-xs")
 	// Sample: Due Apr 28, 2024
 	wirelessBill.dueDate = extractWirelessBillDueDate(wirelessBalanceDue)
 
@@ -262,7 +259,7 @@ func getPhoneBill(wirelessBill *Bill, internetBill *Bill) {
 	internetBill.amountDue = stringToFloat(internetBalance)
 
 	//* Internet due date
-	internetBalanceDue := cd.GetText(browser, "div.pad-t-md-sm:nth-child(1) > div:nth-child(2)")
+	internetBalanceDue := cd.GetText(browser, "div.jsx-3631953385:nth-child(3)")
 	// Sample: Due Apr 28, 2024
 	internetBill.dueDate = extractInternetBillDueDate(internetBalanceDue)
 }
@@ -294,6 +291,7 @@ func getInsuranceBill(insuranceBill *Bill) {
 
 	//* Enter code
 	code := cd.GetCodeFromImap("hmail.digi-safe.co", os.Getenv("IMAP_USERNAME"), os.Getenv("IMAP_PASSWORD"), "Verification Code", `<span style=3D"color:#E22925;">`, "</", false)
+
 	cd.InputText(browser, "#verification_code", code, false, false)
 	cd.Click(browser, "#submitButton", true)
 	if !cd.ElementExists(browser, ".bill-due-amt-txt", 10000) {
@@ -430,13 +428,13 @@ func getWaterBill(waterBill *Bill) {
 
 	//* Click account info
 	cd.Click(browser, ".menuWrapper > ul:nth-child(1) > li:nth-child(6) > a:nth-child(1)", false)
-	if !cd.ElementExists(browser, "div.labelRow:nth-child(5)", 10000) {
+	if !cd.ElementExists(browser, ".menuWrapper > ul:nth-child(1) > li:nth-child(6) > a:nth-child(1)", 10000) {
 		log.Printf("error: balance due not found within 10s")
 		return
 	}
 
 	//* Get balance due
-	balanceDue := cd.GetText(browser, "div.labelRow:nth-child(5)")
+	balanceDue := cd.GetText(browser, ".menuWrapper > ul:nth-child(1) > li:nth-child(6) > a:nth-child(1)")
 	waterBill.amountDue = stringToFloat(balanceDue)
 
 	//* Get due date
@@ -499,12 +497,12 @@ func extractGasBillDueDate(input string) int64 {
 }
 
 func extractWirelessBillDueDate(input string) int64 {
-	format := "Due Jan 02, 2006"
+	format := "Due Jan 2, 2006"
 	return parseDate(input, format)
 }
 
 func extractInternetBillDueDate(input string) int64 {
-	format := "Due Jan 02, 2006"
+	format := "Due Jan 2, 2006"
 	return parseDate(input, format)
 }
 
